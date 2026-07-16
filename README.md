@@ -1,21 +1,32 @@
-# Codex Dream Skin
+# Codex 中国红皮肤
 
 <p align="center">
   <strong>中文</strong> · <a href="./README.en.md">English</a>
 </p>
 
 <p align="center">
-  <strong>给 Codex 桌面端换一张会呼吸的脸。</strong><br>
-  外部主题 / 换肤工具 · 本机 CDP 注入 · 不改官方安装包
+  <strong>为 Codex 桌面端打造的中国红浅色主题。</strong><br>
+  长城红绸横幅 · 国徽品牌区 · 奶油白 / 深红 / 暗金配色
 </p>
 
 <p align="center">
-  一张图，一种心情 · 写代码，也要有氛围感
+  代码自强 · 智造未来
 </p>
 
 <p align="center">
   非 OpenAI 官方产品。不修改 <code>.app</code> / <code>app.asar</code> / WindowsApps。
 </p>
+
+> 本项目基于 [Fei-Away/Codex-Dream-Skin](https://github.com/Fei-Away/Codex-Dream-Skin)
+> 的 MIT 许可版本开发，并保留原项目提交历史、许可与声明。当前中国红主题主要面向 macOS。
+
+## 中国红主题
+
+- 保持 Codex 原生页面结构和全部交互，不使用整窗截图覆盖
+- 首页保留四张原生建议卡、项目选择器和输入区
+- 任务页使用一致的奶油白、深红与暗金配色，并为国徽和任务信息保留独立空间
+- 聊天弹窗等非首页组件保持原生布局，仅应用必要的色彩适配
+- 一键安装、热更新和 Restore 恢复官方外观
 
 ## 赞助商
 

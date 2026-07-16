@@ -4,9 +4,10 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
-const SKIN_VERSION = "1.1.2";
+const SKIN_VERSION = "1.2.0";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const MAX_ART_BYTES = 16 * 1024 * 1024;
+const MAX_EMBLEM_BYTES = 2 * 1024 * 1024;
 
 function parseArgs(argv) {
   const options = {
@@ -239,6 +240,7 @@ async function loadTheme(themeDir) {
     statusText: text(raw.statusText, "DREAM SKIN ONLINE", 80),
     quote: text(raw.quote, "MAKE SOMETHING WONDERFUL", 80),
     image: raw.image,
+    emblem: typeof raw.emblem === "string" && raw.emblem.trim() ? raw.emblem.trim() : null,
     colors: {
       background: color(raw.colors?.background, "#071116"),
       panel: color(raw.colors?.panel, "#0b1a20"),
@@ -261,7 +263,23 @@ async function loadTheme(themeDir) {
   if (![".png", ".jpg", ".jpeg", ".webp"].includes(extension)) {
     throw new Error(`Unsupported theme image format: ${extension || "missing"}`);
   }
-  return { assetsRoot, imagePath, imageStat, theme };
+  let emblemPath = null;
+  let emblemStat = null;
+  if (theme.emblem) {
+    if (path.basename(theme.emblem) !== theme.emblem) {
+      throw new Error("Theme emblem must stay inside its theme directory");
+    }
+    emblemPath = path.join(assetsRoot, theme.emblem);
+    emblemStat = await fs.stat(emblemPath);
+    if (!emblemStat.isFile() || emblemStat.size < 1 || emblemStat.size > MAX_EMBLEM_BYTES) {
+      throw new Error(`Theme emblem must be a non-empty file no larger than ${MAX_EMBLEM_BYTES} bytes`);
+    }
+    const emblemExtension = path.extname(theme.emblem).toLowerCase();
+    if (![".svg", ".png", ".jpg", ".jpeg", ".webp"].includes(emblemExtension)) {
+      throw new Error(`Unsupported theme emblem format: ${emblemExtension || "missing"}`);
+    }
+  }
+  return { assetsRoot, imagePath, imageStat, emblemPath, emblemStat, theme };
 }
 
 async function loadPayload(themeDir) {
@@ -270,15 +288,22 @@ async function loadPayload(themeDir) {
     fs.readFile(path.join(root, "assets", "renderer-inject.js"), "utf8"),
     loadTheme(themeDir),
   ]);
-  const { imagePath, theme } = loaded;
+  const { imagePath, emblemPath, theme } = loaded;
   const art = await fs.readFile(imagePath);
   const extension = path.extname(imagePath).toLowerCase();
   const mime = extension === ".jpg" || extension === ".jpeg" ? "image/jpeg"
     : extension === ".webp" ? "image/webp" : "image/png";
   const artDataUrl = `data:${mime};base64,${art.toString("base64")}`;
+  const emblem = emblemPath ? await fs.readFile(emblemPath) : null;
+  const emblemExtension = emblemPath ? path.extname(emblemPath).toLowerCase() : "";
+  const emblemMime = emblemExtension === ".svg" ? "image/svg+xml"
+    : emblemExtension === ".jpg" || emblemExtension === ".jpeg" ? "image/jpeg"
+      : emblemExtension === ".webp" ? "image/webp" : "image/png";
+  const emblemDataUrl = emblem ? `data:${emblemMime};base64,${emblem.toString("base64")}` : "";
   const payload = template
     .replace("__DREAM_SKIN_CSS_JSON__", JSON.stringify(css))
     .replace("__DREAM_SKIN_ART_JSON__", JSON.stringify(artDataUrl))
+    .replace("__DREAM_SKIN_EMBLEM_JSON__", JSON.stringify(emblemDataUrl))
     .replace("__DREAM_SKIN_THEME_JSON__", JSON.stringify(theme))
     .replace("__DREAM_SKIN_VERSION_JSON__", JSON.stringify(SKIN_VERSION));
   return { imageBytes: art.length, payload, theme };
@@ -295,6 +320,7 @@ async function removeFromSession(session) {
     if (state?.cleanup) return state.cleanup();
     document.documentElement?.classList.remove('codex-dream-skin');
     document.documentElement?.style.removeProperty('--dream-skin-art');
+    document.documentElement?.style.removeProperty('--dream-skin-emblem');
     document.getElementById('codex-dream-skin-style')?.remove();
     document.getElementById('codex-dream-skin-chrome')?.remove();
     delete window.__CODEX_DREAM_SKIN_STATE__;
@@ -334,6 +360,22 @@ async function verifySession(session) {
     const hero = box(home?.firstElementChild?.firstElementChild?.firstElementChild);
     const projectButton = box(home?.querySelector('.group\\\\/project-selector > button'));
     const composer = box(document.querySelector('.composer-surface-chrome'));
+    const homeComposerRegion = box(
+      home?.firstElementChild?.children?.[1]?.firstElementChild
+    );
+    const homeEditor = home?.querySelector(
+      '.composer-surface-chrome textarea, .composer-surface-chrome [contenteditable="true"]'
+    ) ?? null;
+    const homeDraftText = homeEditor
+      ? String(('value' in homeEditor ? homeEditor.value : homeEditor.textContent) ?? '').trim()
+      : '';
+    const homeContentBoxes = [hero, ...visibleCards].filter((item) => item?.visible);
+    const homeContentBottom = homeContentBoxes.length
+      ? Math.max(...homeContentBoxes.map((item) => item.y + item.height))
+      : null;
+    const homeContentComposerGap = homeComposerRegion && homeContentBottom !== null
+      ? homeComposerRegion.y - homeContentBottom
+      : null;
     const sidebar = box(document.querySelector('aside.app-shell-left-panel'));
     const chrome = document.getElementById('codex-dream-skin-chrome');
     const result = {
@@ -347,6 +389,9 @@ async function verifySession(session) {
       hero,
       cards: cardBoxes,
       visibleCardCount: visibleCards.length,
+      homeDraftText,
+      homeComposerRegion,
+      homeContentComposerGap,
       projectButton,
       composer,
       sidebar,
@@ -360,9 +405,14 @@ async function verifySession(session) {
       result.stylePresent && result.chromePresent && result.chromePointerEvents === 'none' &&
       Boolean(result.composer?.visible) && Boolean(result.sidebar?.visible) && !result.documentOverflow.x;
     // Project selector markup varies across Codex builds — soft requirement.
+    const homeCardStatePass = result.homeDraftText
+      ? result.visibleCardCount >= 0 && result.visibleCardCount <= 6
+      : result.visibleCardCount >= 1 && result.visibleCardCount <= 6;
+    const homeSpacingPass = Number.isFinite(result.homeContentComposerGap) &&
+      result.homeContentComposerGap >= 0 && result.homeContentComposerGap <= 128;
     const homePass = !result.homeRoute || (
       result.homePresent && result.hero?.visible && result.hero.width >= 280 && result.hero.height >= 120 &&
-      result.visibleCardCount >= 1 && result.visibleCardCount <= 6
+      homeCardStatePass && homeSpacingPass
     );
     result.pass = Boolean(basePass && homePass);
     result.softNotes = {

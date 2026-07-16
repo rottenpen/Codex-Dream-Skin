@@ -2,10 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const [mode, configPath, backupPath] = process.argv.slice(2);
-// Backup these keys so Restore can put them back. Do NOT force dark —
-// Dream Skin CSS auto-adapts to light/dark via data-dream-shell.
+// 中国红主题依赖 Codex 原生浅色 token；安装时切到浅色，恢复时精确还原用户设置。
 const settings = new Map([
-  ["appearanceTheme", null],
+  ["appearanceTheme", 'appearanceTheme = "light"'],
   ["appearanceDarkCodeThemeId", null],
 ]);
 
@@ -73,7 +72,7 @@ if (mode === "install") {
     await atomicWrite(backupPath, `${JSON.stringify(backup, null, 2)}\n`, 0o600);
   }
 
-  // Only apply non-null settings. null means "backup only / leave user's appearance alone".
+  // Only apply non-null settings. null means backup only.
   let body = section.body;
   let changed = false;
   for (const [key, line] of settings) {
@@ -85,7 +84,7 @@ if (mode === "install") {
     const updated = content.slice(0, section.bodyStart) + body + content.slice(section.bodyEnd);
     await atomicWrite(configPath, updated, originalStat.mode & 0o777);
   }
-  console.log("Saved base-theme backup; left Codex appearanceTheme unchanged (skin auto-adapts light/dark).");
+  console.log("Saved base-theme backup and selected Codex light appearance for the China Red theme.");
 } else {
   let backup;
   try {

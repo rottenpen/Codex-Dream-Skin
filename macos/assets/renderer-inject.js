@@ -1,4 +1,4 @@
-((cssText, artDataUrl, themeConfig) => {
+((cssText, artDataUrl, emblemDataUrl, themeConfig) => {
   const STATE_KEY = "__CODEX_DREAM_SKIN_STATE__";
   const DISABLED_KEY = "__CODEX_DREAM_SKIN_DISABLED__";
   const STYLE_ID = "codex-dream-skin-style";
@@ -7,8 +7,9 @@
   const VERSION = __DREAM_SKIN_VERSION_JSON__;
   const THEME = themeConfig && typeof themeConfig === "object" ? themeConfig : {};
   const THEME_VARIABLES = [
-    "--ds-bg", "--ds-panel", "--ds-panel-2", "--ds-green", "--ds-lime",
-    "--ds-cyan", "--ds-purple", "--ds-text", "--ds-muted", "--ds-line",
+    "--ds-bg", "--ds-panel", "--ds-panel-2", "--ds-red", "--ds-red-bright",
+    "--ds-red-dark", "--ds-gold", "--ds-ink", "--ds-muted", "--ds-success",
+    "--dream-skin-emblem",
     "--dream-skin-name", "--dream-skin-tagline", "--dream-skin-project-prefix",
     "--dream-skin-project-label",
   ];
@@ -35,128 +36,33 @@
 
   const cssString = (value) => JSON.stringify(String(value ?? ""));
 
-  const parseRgb = (value) => {
-    if (!value || value === "transparent") return null;
-    const m = String(value).match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
-    if (!m) return null;
-    return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]) };
-  };
+  const detectShellMode = () => "light";
 
-  const luminance = ({ r, g, b }) => {
-    const lin = [r, g, b].map((c) => {
-      const x = c / 255;
-      return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-  };
-
-  /** Detect Codex app light/dark shell for CSS branching. */
-  const detectShellMode = () => {
-    const root = document.documentElement;
-    const body = document.body;
-    const cls = `${root.className || ""} ${body?.className || ""}`.toLowerCase();
-
-    if (/\b(dark|theme-dark|appearance-dark)\b/.test(cls)) return "dark";
-    if (/\b(light|theme-light|appearance-light)\b/.test(cls)) return "light";
-
-    const dataTheme = (
-      root.getAttribute("data-theme") ||
-      root.getAttribute("data-appearance") ||
-      root.getAttribute("data-color-mode") ||
-      body?.getAttribute("data-theme") ||
-      body?.getAttribute("data-appearance") ||
-      ""
-    ).toLowerCase();
-    if (dataTheme.includes("dark")) return "dark";
-    if (dataTheme.includes("light")) return "light";
-
-    // Radios in profile menu (if present in DOM)
-    const checked = document.querySelector('input[name="appearance-theme"]:checked');
-    if (checked) {
-      const label = (checked.getAttribute("aria-label") || checked.value || "").toLowerCase();
-      if (label.includes("暗") || label.includes("dark")) return "dark";
-      if (label.includes("浅") || label.includes("light")) return "light";
-      if (label.includes("系统") || label.includes("system")) {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      }
-    }
-
-    try {
-      const cs = getComputedStyle(root).colorScheme || "";
-      if (cs.includes("dark") && !cs.includes("light")) return "dark";
-      if (cs.includes("light") && !cs.includes("dark")) return "light";
-    } catch {}
-
-    // Background luminance of main surfaces
-    const samples = [
-      body,
-      document.querySelector("main.main-surface"),
-      document.querySelector("aside.app-shell-left-panel"),
-    ].filter(Boolean);
-    let votesLight = 0;
-    let votesDark = 0;
-    for (const el of samples) {
-      try {
-        const rgb = parseRgb(getComputedStyle(el).backgroundColor);
-        if (!rgb) continue;
-        const L = luminance(rgb);
-        if (L >= 0.55) votesLight += 1;
-        else if (L <= 0.25) votesDark += 1;
-      } catch {}
-    }
-    if (votesLight > votesDark) return "light";
-    if (votesDark > votesLight) return "dark";
-
-    try {
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
-    } catch {}
-    return "light";
-  };
-
-  const applyTheme = (root, shell) => {
+  const applyTheme = (root) => {
     const colors = THEME.colors || {};
-    const accent = colors.accent || (shell === "light" ? "#e25563" : "#7cff46");
-    const accentAlt = colors.accentAlt || accent;
-    const secondary = colors.secondary || (shell === "light" ? "#f3a8af" : "#36d7e8");
-    const highlight = colors.highlight || (shell === "light" ? "#c93d4c" : "#642a8c");
-
-    let variables;
-    if (shell === "light") {
-      // Structural tokens stay light so banners stay readable; accents follow theme.
-      variables = {
-        "--ds-bg": "#f6f2f3",
-        "--ds-panel": "#ffffff",
-        "--ds-panel-2": "#fff7f8",
-        "--ds-green": accent,
-        "--ds-lime": accentAlt,
-        "--ds-cyan": secondary,
-        "--ds-purple": highlight,
-        "--ds-text": "#1f1a1b",
-        "--ds-muted": "#6b5f62",
-        "--ds-line": colors.line || "rgba(196, 120, 128, .22)",
-      };
-    } else {
-      variables = {
-        "--ds-bg": colors.background || "#071116",
-        "--ds-panel": colors.panel || "#0b1a20",
-        "--ds-panel-2": colors.panelAlt || "#10272c",
-        "--ds-green": accent,
-        "--ds-lime": accentAlt,
-        "--ds-cyan": secondary,
-        "--ds-purple": highlight,
-        "--ds-text": colors.text || "#e9fff1",
-        "--ds-muted": colors.muted || "#9ebdb3",
-        "--ds-line": colors.line || "rgba(124, 255, 70, .28)",
-      };
-    }
+    const variables = {
+      "--ds-bg": colors.background || "#fff8e8",
+      "--ds-panel": colors.panel || "#fffcf5",
+      "--ds-panel-2": colors.panelAlt || "#fff2df",
+      "--ds-red": colors.accent || "#9b0000",
+      "--ds-red-bright": colors.accentAlt || "#c81717",
+      "--ds-red-dark": colors.highlight || "#6f0808",
+      "--ds-gold": colors.secondary || "#c89322",
+      "--ds-ink": colors.text || "#291815",
+      "--ds-muted": colors.muted || "#67534d",
+      "--ds-success": "#198754",
+    };
 
     for (const [name, value] of Object.entries(variables)) {
-      if (typeof value === "string" && value) root.style.setProperty(name, value);
+      root.style.setProperty(name, value);
     }
-    root.style.setProperty("--dream-skin-name", cssString(THEME.name || "Codex Dream Skin"));
-    root.style.setProperty("--dream-skin-tagline", cssString(THEME.tagline || "Make something wonderful."));
+    root.style.setProperty("--dream-skin-name", cssString(THEME.name || "CODEX 中国红"));
+    root.style.setProperty(
+      "--dream-skin-tagline",
+      cssString(THEME.tagline || "让每一次创造，都成为值得骄傲的成果。"),
+    );
     root.style.setProperty("--dream-skin-project-prefix", cssString(THEME.projectPrefix || "选择项目 · "));
-    root.style.setProperty("--dream-skin-project-label", cssString(THEME.projectLabel || "◉  选择项目"));
+    root.style.setProperty("--dream-skin-project-label", cssString(THEME.projectLabel || "选择项目"));
   };
 
   const existingStyle = document.getElementById(STYLE_ID);
@@ -169,11 +75,11 @@
     if (window[DISABLED_KEY]) return;
     const root = document.documentElement;
     if (!root) return;
-    const shell = detectShellMode();
     root.classList.add("codex-dream-skin");
-    root.setAttribute(SHELL_ATTR, shell);
+    root.setAttribute(SHELL_ATTR, "light");
     root.style.setProperty("--dream-skin-art", `url("${artUrl}")`);
-    applyTheme(root, shell);
+    root.style.setProperty("--dream-skin-emblem", emblemDataUrl ? `url("${emblemDataUrl}")` : "none");
+    applyTheme(root);
 
     let style = document.getElementById(STYLE_ID);
     if (!style) {
@@ -207,26 +113,27 @@
       chrome.setAttribute("aria-hidden", "true");
       chrome.innerHTML = `
         <div class="dream-skin-brand">
-          <span class="dream-skin-portal-mark">◉</span>
+          <img class="dream-skin-emblem" alt="中华人民共和国国徽" />
           <span><b></b><small></small></span>
         </div>
-        <div class="dream-skin-status"><i></i><span></span></div>
-        <div class="dream-skin-quote"></div>
-        <div class="dream-skin-particles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="dream-skin-orbit"></div>`;
+        <div class="dream-skin-status"><i></i><span></span></div>`;
       document.body.appendChild(chrome);
     }
-    chrome.querySelector(".dream-skin-brand b").textContent = THEME.name || "Codex Dream Skin";
-    chrome.querySelector(".dream-skin-brand small").textContent = THEME.brandSubtitle || "CODEX DREAM SKIN";
-    chrome.querySelector(".dream-skin-status span").textContent = THEME.statusText || "DREAM SKIN ONLINE";
-    chrome.querySelector(".dream-skin-quote").textContent = THEME.quote || "MAKE SOMETHING WONDERFUL";
+    const emblem = chrome.querySelector(".dream-skin-emblem");
+    if (emblem) {
+      emblem.src = emblemDataUrl || "";
+      emblem.style.display = emblemDataUrl ? "block" : "none";
+    }
+    chrome.querySelector(".dream-skin-brand b").textContent = THEME.name || "CODEX 中国红";
+    chrome.querySelector(".dream-skin-brand small").textContent = THEME.brandSubtitle || "代码自强 · 智造未来";
+    chrome.querySelector(".dream-skin-status span").textContent = THEME.statusText || "中国红模式";
     const shellBox = shellMain.getBoundingClientRect();
     chrome.style.left = `${Math.round(shellBox.left)}px`;
     chrome.style.top = `${Math.round(shellBox.top)}px`;
     chrome.style.width = `${Math.round(shellBox.width)}px`;
     chrome.style.height = `${Math.round(shellBox.height)}px`;
     chrome.classList.toggle("dream-skin-home-shell", Boolean(home));
-    chrome.dataset.dreamShell = shell;
+    chrome.dataset.dreamShell = "light";
   };
 
   const cleanup = () => {
@@ -234,6 +141,7 @@
     document.documentElement?.classList.remove("codex-dream-skin");
     document.documentElement?.removeAttribute(SHELL_ATTR);
     document.documentElement?.style.removeProperty("--dream-skin-art");
+    document.documentElement?.style.removeProperty("--dream-skin-emblem");
     for (const name of THEME_VARIABLES) document.documentElement?.style.removeProperty(name);
     document.querySelectorAll(".dream-skin-home").forEach((node) => node.classList.remove("dream-skin-home"));
     document.querySelectorAll(".dream-skin-home-shell").forEach((node) => node.classList.remove("dream-skin-home-shell"));
@@ -295,4 +203,4 @@
   };
   ensure();
   return { installed: true, version: VERSION, themeId: THEME.id || "custom", shell: detectShellMode() };
-})(__DREAM_SKIN_CSS_JSON__, __DREAM_SKIN_ART_JSON__, __DREAM_SKIN_THEME_JSON__)
+})(__DREAM_SKIN_CSS_JSON__, __DREAM_SKIN_ART_JSON__, __DREAM_SKIN_EMBLEM_JSON__, __DREAM_SKIN_THEME_JSON__)
