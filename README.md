@@ -28,6 +28,16 @@
 - 聊天弹窗等非首页组件保持原生布局，仅应用必要的色彩适配
 - 一键安装、热更新和 Restore 恢复官方外观
 
+<p align="center">
+  <img src="docs/images/screenshot-china-red-home.png" alt="Codex 中国红首页" width="1000"><br>
+  <sub>中国红首页：长城红绸横幅、原生建议卡与项目输入区</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/screenshot-china-red-task.png" alt="Codex 中国红任务页" width="1000"><br>
+  <sub>中国红任务页：原生任务内容、输出面板与输入框</sub>
+</p>
+
 ## 赞助商
 
 <p align="center">
