@@ -669,28 +669,29 @@ html.codex-dream-skin main.main-surface {
   display: flex !important;
 }
 
-/* 任务页保留国徽，但不显示品牌文字，给原生任务标题让出空间。 */
+/* 任务页的国徽跟随原生标题容器，避免窗口宽度变化时与任务名称重叠。 */
 #codex-dream-skin-chrome:not(.dream-skin-home-shell) .dream-skin-brand {
-  left: 354px !important;
-  top: 6px !important;
-  display: flex !important;
-  width: 31px !important;
-  overflow: hidden !important;
-}
-
-#codex-dream-skin-chrome:not(.dream-skin-home-shell) .dream-skin-brand > span {
   display: none !important;
-}
-
-#codex-dream-skin-chrome:not(.dream-skin-home-shell) .dream-skin-emblem {
-  width: 29px !important;
-  height: 33px !important;
 }
 
 html.codex-dream-skin main.main-surface:not(.dream-skin-home-shell)
   > header.app-header-tint > div:nth-child(3) {
-  padding-left: 58px !important;
+  position: relative !important;
+  padding-left: 48px !important;
   color: #fff5e3 !important;
+}
+
+html.codex-dream-skin main.main-surface:not(.dream-skin-home-shell)
+  > header.app-header-tint > div:nth-child(3)::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 8px !important;
+  top: 50% !important;
+  width: 30px !important;
+  height: 34px !important;
+  transform: translateY(-50%) !important;
+  background: var(--dream-skin-emblem) center / contain no-repeat !important;
+  pointer-events: none !important;
 }
 
 html.codex-dream-skin main.main-surface:not(.dream-skin-home-shell)
